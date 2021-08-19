@@ -4,8 +4,8 @@
 #define AMotorlog_b 8
 
 #define BMotorPWM   5 // B모터 PIN
-#define BMotorlog_a 6
-#define BMotorlog_b 7
+#define BMotorlog_a 41
+#define BMotorlog_b 43
 
 // 함수 원형
 void AMotor (int PWM , boolean Mode);
@@ -78,9 +78,7 @@ void loop() {
     goal_vel = Serial.parseFloat();              // 2. 듀티비 한계값 정의 및 조정
 //    goal_vel = 0.2 ;
     }
-
-
-
+if ( goal_vel >0 ){
   Lerorr = goal_vel - Lcurvel ;
   LP = Kp * Lerorr ;
   LI = LI + Ki * Lerorr  ;
@@ -102,61 +100,44 @@ void loop() {
   RPID = RP + RI + RD ;
   R_pre_error = Rerorr;
   R_duty = RPID;
+  AMotor(L_duty, Forward);
+  BMotor(R_duty, Forward);
+}
 
-
-  // 모터 입력 함수 부분
-  if (R_duty > 49 && R_duty > 49 && R_duty <= 200 && L_duty <= 200) {
-    AMotor(L_duty, Forward); //Left Cotrol true : Forward false : Backward
-    BMotor(R_duty, Forward); //Right Control
+else if ( goal_vel < 0 ){
+  Lerorr = goal_vel - Lcurvel ;
+  LP = Kp * Lerorr ;
+  LI = LI + Ki * Lerorr  ;
+  if ( LI > 200) {
+    LI = 150;
   }
-//  else if (duty < 0 && (abs(duty) > 50 && abs(duty) <= 200)) {
-//    AMotor(abs(L_duty), Backward);
-//    BMotor(abs(R_duty), Backward);
-//  }
-//  else if (duty == 0 ) {
-//    AMotor(L_duty, Forward);
-//    BMotor(R_duty, Forward);
-//  }
+  LD = Kd * (Lerorr - L_pre_error) ;
+  LPID = LP + LI + LD ;
+  L_pre_error = Lerorr;
+  L_duty = LPID;
 
+  Rerorr = goal_vel - Rcurvel ;
+  RP = Kp * Rerorr ;
+  RI = RI + Ki * Rerorr  ;
+  if ( RI > 200) {
+    RI = 150;
+  }
+  RD = Kd * (Rerorr - R_pre_error) ;
+  RPID = RP + RI + RD ;
+  R_pre_error = Rerorr;
+  R_duty = RPID;
+  AMotor(abs(L_duty), Backward);
+  BMotor(abs(L_duty), Backward);
+}
+else {
+  AMotor(0, Forward);
+  BMotor(0, Forward);
+}
 
 
   Serial.print ("GOAL_VELO : ");
   Serial.println(goal_vel);
-//  Serial.print ("Lcurvel : ");
-//  Serial.print (Lcurvel);
-//  Serial.print (" LDirection : ");
 
-//  if (LbaGap > LabGap)
-//    Serial.print("Forward  ");
-//  else if (LcurRpm == 0 )
-//    Serial.print("Stop    ");
-//  else
-//    Serial.print("Backward  ");
-//  //
-  //    Serial.print ("Rcurvel : ");
-  //    Serial.print (Rcurvel);
-  //    Serial.print ("     RDirection : ");
-  //
-  //    if (RbaGap > RabGap)
-  //      Serial.println("Forward ");
-  //    else if (RcurRpm == 0 )
-  //      Serial.println("Stop  ");
-  //    else
-  //      Serial.print("Backward ");
-
-//  Serial.print("   PID : ");
-//  Serial.println(PID);
-//  Serial.print("   P : ");
-//  Serial.print(P);
-//  Serial.print("   I : ");
-//  Serial.print(I);
-//  Serial.print("   D : ");
-//  Serial.print(D);
-//  Serial.print("   error : ");
-//  Serial.print(Lerorr);
-//  Serial.print("  Duty : ");
-//  Serial.println(duty);
-//  Serial.println();
   delay(1);
 }
 
