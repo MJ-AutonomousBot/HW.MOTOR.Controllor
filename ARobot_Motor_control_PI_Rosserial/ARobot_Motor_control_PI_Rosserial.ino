@@ -40,7 +40,7 @@ boolean Forward = true;
 boolean Backward = false;
 
 // 모터 목표 속도 및 듀티에 관련한 변수 초기화 선언
-float goal_vel = 0;
+float R_goal_vel = 0 , L_goal_vel = 0, Ang_goal_vel;
 int L_duty = 0, R_duty = 0;
 
 //PID 제어 관련 변수 선언
@@ -49,12 +49,25 @@ float L_pre_error = 0, Lerorr = 0;
 float RPID = 0 , RP = 0 , RI = 0, RD = 0 ;
 float R_pre_error = 0, Rerorr = 0;
 float Kp = 0, Kd = 0, Ki = 0 ;
-
+float Length = 3.6 ;
 ros::NodeHandle  nh;
 
 void messageCb( const geometry_msgs::Twist& cmd_msg) {
+  Ang_goal_vel = cmd_msg.angular.z;
+  if (Ang_goal_vel == 0) {
+    R_goal_vel = cmd_msg.linear.x;
+    L_goal_vel = cmd_msg.linear.x;
+  }
+  if (Ang_goal_vel > 0 )
+  { R_goal_vel = +(Ang_goal_vel*Length)/2;
+    L_goal_vel = -(Ang_goal_vel*Length)/2;
+  }
+  else if (Ang_goal_vel < 0 )
+  { R_goal_vel = +(Ang_goal_vel*Length)/2;
+    L_goal_vel = -(Ang_goal_vel*Length)/2;
+  }
 
-  goal_vel = cmd_msg.linear.x;
+
 
 }  // rossserial callback function
 
@@ -93,65 +106,78 @@ void setup() {
 
 
 void loop() {
-
-
-  if ( goal_vel > 0 ) {
-    Lerorr = goal_vel - Lcurvel ;
+  if (L_goal_vel > 0) {
+    Lerorr = L_goal_vel - Lcurvel ;
     LP = Kp * Lerorr ;
     LI = LI + Ki * Lerorr  ;
-    if ( LI > 200) {
-      LI = 150;
-    }
+
     LD = Kd * (Lerorr - L_pre_error) ;
     LPID = LP + LI + LD ;
     L_pre_error = Lerorr;
     L_duty = LPID;
 
-    Rerorr = goal_vel - Rcurvel ;
-    RP = Kp * Rerorr ;
-    RI = RI + Ki * Rerorr  ;
-    if ( RI > 200) {
-      RI = 150;
-    }
-    RD = Kd * (Rerorr - R_pre_error) ;
-    RPID = RP + RI + RD ;
-    R_pre_error = Rerorr;
-    R_duty = RPID;
     AMotor(L_duty, Forward);
-    BMotor(R_duty, Forward);
   }
-
-  else if ( goal_vel < 0 ) {
-    Lerorr = goal_vel - Lcurvel ;
+  else if (L_goal_vel < 0) {
+    Lerorr =  Lcurvel + L_goal_vel ;
     LP = Kp * Lerorr ;
     LI = LI + Ki * Lerorr  ;
-    if ( LI > 200) {
-      LI = 150;
-    }
+ss
     LD = Kd * (Lerorr - L_pre_error) ;
     LPID = LP + LI + LD ;
     L_pre_error = Lerorr;
     L_duty = LPID;
+    AMotor(abs(L_duty), Backward);
+  }
+  else if (L_goal_vel == 0)
+  {
+    AMotor(0, Forward);
+    Lerorr = 0;
+    L_pre_error = 0;
+    Lcurvel = 0;
+    L_duty = 0;
+    LP = 0 ; LI = 0 ; LD = 0 ;
 
-    Rerorr = goal_vel - Rcurvel ;
+  }
+
+  if (R_goal_vel > 0) {
+    Rerorr = R_goal_vel - Rcurvel ;
+
     RP = Kp * Rerorr ;
     RI = RI + Ki * Rerorr  ;
-    if ( RI > 200) {
-      RI = 150;
-    }
     RD = Kd * (Rerorr - R_pre_error) ;
-    RPID = RP + RI + RD ;
+
     R_pre_error = Rerorr;
+    RPID = RP + RI + RD ;
     R_duty = RPID;
-    AMotor(abs(L_duty), Backward);
-    BMotor(abs(L_duty), Backward);
+
+    BMotor(R_duty, Forward);
+    cur_vel.linear.x = (Rcurvel + Lcurvel) / 2;
   }
-  else {
-    AMotor(0, Forward);
+  else if (R_goal_vel < 0) {
+    Rerorr = R_goal_vel + Rcurvel;
+
+    RP = Kp * Rerorr ;
+    RI = RI + Ki * Rerorr  ;
+    RD = Kd * (Rerorr - R_pre_error) ;
+    R_pre_error = Rerorr;
+
+    RPID = RP + RI + RD ;
+    R_duty = RPID;
+    BMotor(abs(R_duty), Backward);
+    cur_vel.linear.x = -(Rcurvel + Lcurvel) / 2;
+  }
+  else if (R_goal_vel == 0)
+  {
     BMotor(0, Forward);
+    Rerorr = 0;
+    R_pre_error = 0;
+    Rcurvel = 0;
+    R_duty = 0;
+    RP = 0 ; RI = 0 ; RD = 0 ;
   }
 
-  cur_vel.linear.x = Lcurvel;
+  cur_vel.angular.z = 2*(Rcurvel - Lcurvel)*Length;
   encoder.publish(&cur_vel);
   nh.spinOnce();
   delay(1);
