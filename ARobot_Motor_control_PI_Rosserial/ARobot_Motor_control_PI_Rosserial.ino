@@ -49,22 +49,22 @@ float L_pre_error = 0, Lerorr = 0;
 float RPID = 0 , RP = 0 , RI = 0, RD = 0 ;
 float R_pre_error = 0, Rerorr = 0;
 float Kp = 0, Kd = 0, Ki = 0 ;
-float Length = 3.6 ;
+float Length = 0.36 ;
 ros::NodeHandle  nh;
 
 void messageCb( const geometry_msgs::Twist& cmd_msg) {
   Ang_goal_vel = cmd_msg.angular.z;
-  if (Ang_goal_vel == 0) {
+  
     R_goal_vel = cmd_msg.linear.x;
     L_goal_vel = cmd_msg.linear.x;
-  }
+  
   if (Ang_goal_vel > 0 )
-  { R_goal_vel = +(Ang_goal_vel*Length)/2;
-    L_goal_vel = -(Ang_goal_vel*Length)/2;
+  { R_goal_vel = R_goal_vel+(Ang_goal_vel*Length)/2;
+    L_goal_vel = L_goal_vel-(Ang_goal_vel*Length)/2;
   }
   else if (Ang_goal_vel < 0 )
-  { R_goal_vel = +(Ang_goal_vel*Length)/2;
-    L_goal_vel = -(Ang_goal_vel*Length)/2;
+  { R_goal_vel = R_goal_vel+(Ang_goal_vel*Length)/2;
+    L_goal_vel = L_goal_vel-(Ang_goal_vel*Length)/2;
   }
 
 
