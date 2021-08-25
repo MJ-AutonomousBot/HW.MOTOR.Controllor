@@ -17,7 +17,7 @@ void LDetectA(void); // 인터럽트 콜백 함수
 void LDetectB(void);
 void RDetectA(void);
 void RDetectB(void);
-int Limit(double value); // 함수정의문에서 값 조정하여 사용
+ // 함수정의문에서 값 조정하여 사용
 
 // Hall 센서
 int LhallA = 19;
@@ -33,7 +33,7 @@ volatile unsigned int LbaGap = 0, LabGap = 0, RbaGap = 0, RabGap = 0;
 
 // 회전속도 : RPM  //선속도 : m/s
 unsigned int LcurRpm = 0, RcurRpm = 0;
-float Lcurvel = 0, Rcurvel = 0;
+float Lcurvel = 0, Rcurvel = 0, pub_Rcurvel = 0 , pub_Lcurvel = 0;
 
 //Motor 함수에서 방향을 설정하기 위한 Bool형 자료
 boolean Forward = true;
@@ -50,8 +50,11 @@ float RPID = 0 , RP = 0 , RI = 0, RD = 0 ;
 float R_pre_error = 0, Rerorr = 0;
 float Kp = 0, Kd = 0, Ki = 0 ;
 float Length = 0.36 ;
+
+//ROS code
 ros::NodeHandle  nh;
 
+// rossserial callback function
 void messageCb( const geometry_msgs::Twist& cmd_msg) {
   Ang_goal_vel = cmd_msg.angular.z;
   
@@ -69,10 +72,12 @@ void messageCb( const geometry_msgs::Twist& cmd_msg) {
 
 
 
-}  // rossserial callback function
+}  
 
+// Ros Sub Node Declaration
 ros::Subscriber<geometry_msgs::Twist> sub_vel("cmd_vel", messageCb );
 
+// Ros Pub Node Declaration
 geometry_msgs::Twist cur_vel;
 ros::Publisher encoder("cur_vel", &cur_vel);
 
@@ -106,6 +111,7 @@ void setup() {
 
 
 void loop() {
+  nh.spinOnce();
   if (L_goal_vel > 0) {
     Lerorr = L_goal_vel - Lcurvel ;
     LP = Kp * Lerorr ;
@@ -122,7 +128,7 @@ void loop() {
     Lerorr =  Lcurvel + L_goal_vel ;
     LP = Kp * Lerorr ;
     LI = LI + Ki * Lerorr  ;
-ss
+
     LD = Kd * (Lerorr - L_pre_error) ;
     LPID = LP + LI + LD ;
     L_pre_error = Lerorr;
@@ -152,7 +158,6 @@ ss
     R_duty = RPID;
 
     BMotor(R_duty, Forward);
-    cur_vel.linear.x = (Rcurvel + Lcurvel) / 2;
   }
   else if (R_goal_vel < 0) {
     Rerorr = R_goal_vel + Rcurvel;
@@ -165,7 +170,6 @@ ss
     RPID = RP + RI + RD ;
     R_duty = RPID;
     BMotor(abs(R_duty), Backward);
-    cur_vel.linear.x = -(Rcurvel + Lcurvel) / 2;
   }
   else if (R_goal_vel == 0)
   {
@@ -176,10 +180,15 @@ ss
     R_duty = 0;
     RP = 0 ; RI = 0 ; RD = 0 ;
   }
-
-  cur_vel.angular.z = 2*(Rcurvel - Lcurvel)*Length;
+if (L_goal_vel == 0)
+{
+  Rcurvel = 0;
+  Rcurvel = 0;
+}
+  cur_vel.linear.x = (pub_Rcurvel + pub_Lcurvel) / 2;
+  cur_vel.angular.z = 2*(pub_Rcurvel - pub_Lcurvel)*Length;
   encoder.publish(&cur_vel);
-  nh.spinOnce();
+  
   delay(1);
 }
 
@@ -187,12 +196,20 @@ void LDetectA()
 {
   LAmicro = micros();
   LbaGap = LAmicro - LBmicro;
-  if (LpreMicro) {
+  if (L_goal_vel!=0) {
     LcurRpm = 1000000 * 60 / (LAmicro - LpreMicro );
     LcurRpm /= 925;
     Lcurvel = LcurRpm * (3.14159 * 0.066) / 60.0;
     //2체배| 회전당 13 PPR | 기어비(75:1) -> 13*75 =925
   }
+  
+  if (LbaGap > LabGap) 
+
+        pub_Lcurvel=Lcurvel;
+
+      else 
+
+        pub_Lcurvel=-Lcurvel;
   LpreMicro = LAmicro;
 }
 
@@ -205,11 +222,19 @@ void RDetectA()
 {
   RAmicro = micros();
   RbaGap = RAmicro - RBmicro;
-  if (RpreMicro) {
+  if (R_goal_vel!=0) {
     RcurRpm = 1000000 * 60 / (RAmicro - RpreMicro );
     RcurRpm /= 925;
     Rcurvel = RcurRpm * (3.14159 * 0.066) / 60.0;
   }
+  if (RbaGap > RabGap) 
+
+        pub_Rcurvel=Rcurvel;
+
+      else 
+
+        pub_Rcurvel=-Rcurvel;
+         
   RpreMicro = RAmicro;
 }
 
@@ -248,14 +273,4 @@ void BMotor (int PWM , boolean Mode) // Motor Pwm Control Function
     digitalWrite(BMotorlog_a, LOW);
     digitalWrite(BMotorlog_b, HIGH);
   }
-}
-
-int Limit(double value) {
-  if (value < -100) {
-    value = -100;
-  }
-  else if (value > 100) {
-    value = 100;
-  }
-  return value;
 }
