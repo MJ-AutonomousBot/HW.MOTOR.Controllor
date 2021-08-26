@@ -7,6 +7,8 @@
 #define BMotorlog_a 41
 #define BMotorlog_b 43
 
+#define pi 3.141592
+
 #include <ros.h>
 #include <geometry_msgs/Twist.h>
 
@@ -49,7 +51,7 @@ float L_pre_error = 0, Lerorr = 0;
 float RPID = 0 , RP = 0 , RI = 0, RD = 0 ;
 float R_pre_error = 0, Rerorr = 0;
 float Kp = 0, Kd = 0, Ki = 0 ;
-float Length = 0.36 ;
+float Length = 0.340 ;
 
 //ROS code
 ros::NodeHandle  nh;
@@ -62,12 +64,12 @@ void messageCb( const geometry_msgs::Twist& cmd_msg) {
     L_goal_vel = cmd_msg.linear.x;
   
   if (Ang_goal_vel > 0 )
-  { R_goal_vel = R_goal_vel+(Ang_goal_vel*Length)/2;
-    L_goal_vel = L_goal_vel-(Ang_goal_vel*Length)/2;
+  { R_goal_vel = R_goal_vel+(Ang_goal_vel*Length/2);
+    L_goal_vel = L_goal_vel-(Ang_goal_vel*Length/2);
   }
   else if (Ang_goal_vel < 0 )
-  { R_goal_vel = R_goal_vel+(Ang_goal_vel*Length)/2;
-    L_goal_vel = L_goal_vel-(Ang_goal_vel*Length)/2;
+  { R_goal_vel = R_goal_vel+(Ang_goal_vel*Length/2);
+    L_goal_vel = L_goal_vel-(Ang_goal_vel*Length/2);
   }
 
 
@@ -186,7 +188,7 @@ if (L_goal_vel == 0)
   Rcurvel = 0;
 }
   cur_vel.linear.x = (pub_Rcurvel + pub_Lcurvel) / 2;
-  cur_vel.angular.z = 2*(pub_Rcurvel - pub_Lcurvel)*Length;
+  cur_vel.angular.z = (pub_Rcurvel - pub_Lcurvel)/Length;
   encoder.publish(&cur_vel);
   
   delay(1);
